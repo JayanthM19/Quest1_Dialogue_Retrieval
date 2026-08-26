@@ -56,7 +56,7 @@ git clone https://github.com/JayanthM19/Quest1_Dialogue_Retrieval.git
 Enter the project directory:
 
 ```bash
-cd Dialogue_Retrieval
+cd Quest1_Dialogue_Retrieval
 ```
 
 If your cloned directory has a different name, use that directory name instead.
