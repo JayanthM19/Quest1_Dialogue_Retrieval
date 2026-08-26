@@ -1,15 +1,3 @@
-PROMPTS.TXT
-============================================================
-DIALOGUE FRAME FINDER — DEVELOPMENT PROMPTS
-============================================================
-
-This file records the prompts used to guide the development of the
-Dialogue Frame Finder project.
-
-The prompts are organized by development stage rather than treating every
-prompt as a separate section. They reflect the actual implementation in
-the submitted repository.
-
 
 ============================================================
 1. UNDERSTANDING THE REQUIREMENT
