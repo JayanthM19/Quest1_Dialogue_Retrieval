@@ -1,0 +1,479 @@
+PROMPTS.TXT
+============================================================
+DIALOGUE FRAME FINDER — DEVELOPMENT PROMPTS
+============================================================
+
+This file records the prompts used to guide the development of the
+Dialogue Frame Finder project.
+
+The prompts are organized by development stage rather than treating every
+prompt as a separate section. They reflect the actual implementation in
+the submitted repository.
+
+
+============================================================
+1. UNDERSTANDING THE REQUIREMENT
+============================================================
+
+- "Analyze the problem statement carefully and explain exactly what the
+  system is expected to do, including the input, target dialogue, required
+  output, first-frame requirement, and handling of unsuccessful searches. Also remeber : one of the evaluator told us 'Don't be a human proxy for the AI model (whatever is the model capability), be a meaningful AI engineer who drives the AI.'"
+
+
+
+- "Break the problem into the major engineering challenges instead of
+  jumping directly into implementation."
+
+- "Identify the difference between finding a dialogue approximately and
+  identifying the first video frame where the requested on-screen dialogue
+  actually appears."
+
+- "Propose a practical end-to-end architecture for solving this problem
+  reliably with a focus on deterministic and explainable behavior."
+
+
+============================================================
+2. OVERALL SEARCH STRATEGY
+============================================================
+
+- "Design a coarse-to-fine strategy so the entire video does not need to
+  receive expensive OCR processing frame by frame."
+
+- "Use speech information when available to identify an approximate time
+  region, then use visual text recognition to verify the requested dialogue
+  on screen."
+
+- "Keep audio and visual evidence independent so that failure of one path
+  does not automatically mean that the dialogue is absent."
+
+- "Design the system so that the final answer is based on visual frame
+  evidence rather than blindly trusting speech recognition."
+
+
+============================================================
+3. MEDIA ACQUISITION
+============================================================
+
+- "Compare practical Python-compatible approaches for downloading and
+  decoding videos from public URLs and explain how the system should also
+  support local video files."
+
+- "Use yt-dlp for URL-based media acquisition and FFmpeg-based processing
+  underneath the application."
+
+- "Keep media acquisition behind a dedicated abstraction so the rest of the
+  system does not need to know whether the source was a URL or local file."
+
+- "Make the media layer expose the information required for audio extraction,
+  frame access, duration, frame rate, and timestamp-based processing."
+
+- "Handle media-access failures explicitly instead of interpreting an
+  inaccessible video as NOT_FOUND."
+
+
+============================================================
+4. DATA MODELS AND CONTRACTS
+============================================================
+
+- "Define small data contracts for the major stages instead of creating
+  tightly coupled classes."
+
+- "Create contracts for the search request, media information, candidate
+  regions, OCR observations, match evidence, and final search result."
+
+- "Keep the contracts independent of the specific OCR, ASR, and media
+  libraries so those implementations can be replaced later."
+
+- "Define CandidateRegion as a time interval that represents an area worth
+  investigating, including its source and confidence."
+
+- "Define SearchResult so the system can distinguish a successful result
+  from an unsuccessful or uncertain search."
+
+
+============================================================
+5. TEXT NORMALIZATION AND MATCHING
+============================================================
+
+- "Design deterministic text matching that can tolerate normal OCR errors
+  without relying on an LLM."
+
+- "Normalize target and OCR text by handling case, punctuation, whitespace,
+  and common formatting differences before comparison."
+
+- "Use fuzzy similarity rather than exact string equality."
+
+- "Treat partial text matches as evidence for localization rather than as
+  final confirmation."
+
+- "Define separate NONE, PARTIAL, and STRONG matching states."
+
+- "Keep matching thresholds configurable so they can be tuned against real
+  video examples."
+
+- "Add deterministic tests covering exact matches, case differences,
+  punctuation differences, OCR character substitutions, partial matches,
+  weak matches, and unrelated text."
+
+
+============================================================
+6. CANDIDATE REGION GENERATION AND MERGING
+============================================================
+
+- "Design the candidate-generation layer so audio and visual search can
+  independently propose time intervals for further investigation."
+
+- "Implement candidate-region merging as pure deterministic logic that does
+  not depend on OCR, ASR, FFmpeg, or the pipeline."
+
+- "Merge overlapping or adjacent candidate regions and preserve the useful
+  source information."
+
+- "When audio and visual regions overlap, represent the combined evidence
+  without artificially increasing confidence."
+
+- "Use the strongest contributing confidence rather than averaging or
+  summing confidence values."
+
+- "Add tests for overlapping, adjacent, separate, same-source, mixed-source,
+  empty, and tolerance-based candidate regions."
+
+
+============================================================
+7. IMAGE PROCESSING
+============================================================
+
+- "Choose a lightweight Python image-processing layer for operations needed
+  before OCR and for saving the final frame."
+
+- "Use Pillow for resizing, cropping, grayscale conversion, contrast
+  adjustment, and image saving while leaving video decoding to FFmpeg."
+
+- "Keep image-processing functions independent from RapidOCR and the rest
+  of the search pipeline."
+
+- "Make image transformations return new image objects instead of
+  unexpectedly modifying the original frame."
+
+- "Add deterministic synthetic-image tests for resizing, cropping,
+  grayscale conversion, contrast adjustment, validation errors, and
+  saving images."
+
+
+============================================================
+8. OCR ENGINE AND VISUAL SEARCH
+============================================================
+
+- "Compare practical local OCR options for this workload and select an OCR
+  engine based on video subtitle recognition, throughput, confidence
+  information, and deployment simplicity."
+
+- "Use RapidOCR as the primary OCR engine for visible dialogue recognition."
+
+- "Keep OCR processing separate from image preprocessing and text matching."
+
+- "Design OCR observations to retain the timestamp/frame reference, detected
+  text, OCR confidence, and relevant text-region information."
+
+- "Use coarse OCR sampling to locate promising regions before expensive
+  frame-by-frame verification."
+
+- "Do not assume subtitles always appear at the bottom of the frame."
+
+
+============================================================
+9. AUDIO / ASR SEARCH
+============================================================
+
+- "Use speech recognition only as an auxiliary method for narrowing the
+  visual search area, not as the final authority for the answer."
+
+- "Compare Whisper-family ASR approaches and lightweight alternatives based
+  on transcription quality, timestamp usefulness, local execution, and
+  setup complexity."
+
+- "Use faster-whisper for local speech recognition and timestamped speech
+  evidence."
+
+- "Match the requested dialogue against timestamped speech and convert a
+  successful speech match into a candidate visual time region."
+
+- "Add a safety margin around the detected speech interval because speech
+  timing does not necessarily equal the first visual appearance of the
+  dialogue."
+
+- "Keep ASR failures non-fatal so the OCR path can still search for visible
+  dialogue."
+
+
+============================================================
+10. FRAME LOCALIZATION AND TEMPORAL VERIFICATION
+============================================================
+
+- "Define what 'first frame containing the dialogue' means operationally
+  and use a conservative, repeatable rule."
+
+- "Use coarse OCR to identify an approximate appearance boundary, then
+  switch to sequential frame-by-frame verification around that boundary."
+
+- "Require a strong enough fuzzy match before considering a frame reliable."
+
+- "Use neighboring frames as temporal evidence so a single OCR false
+  positive does not become the final answer."
+
+- "Treat gradually appearing dialogue as a progression of evidence rather
+  than requiring the full sentence to appear instantly."
+
+- "Return the earliest frame that satisfies the configured reliability
+  criterion and receives sufficient temporal support."
+
+- "Distinguish FOUND, UNCERTAIN, and NOT_FOUND rather than forcing every
+  search into a binary answer."
+
+- "Use UNCERTAIN when meaningful evidence exists but the available OCR or
+  temporal evidence is insufficient to establish the exact first frame."
+
+- "Use NOT_FOUND only when the searched regions do not provide sufficient
+  evidence for the requested dialogue."
+
+- "Keep OCR confidence, text-match confidence, and temporal evidence
+  conceptually separate so their meanings remain explainable."
+
+
+============================================================
+11. OUTPUT HANDLING
+============================================================
+
+- "Design the output layer so every new search starts with a clean output
+  directory and never leaves an image from a previous search."
+
+- "Save only the final selected frame after localization has identified the
+  first reliable frame."
+
+- "Do not save intermediate OCR frames or candidate frames as final output."
+
+- "Store the resulting image path in the final SearchResult when a reliable
+  frame is found."
+
+- "For NOT_FOUND or UNCERTAIN results where no reliable frame was selected,
+  do not fabricate an output image path."
+
+- "Keep filesystem operations in the output layer rather than inside the
+  localization or OCR modules."
+
+
+============================================================
+12. PIPELINE INTEGRATION
+============================================================
+
+- "Connect the implemented components into a sequential end-to-end
+  pipeline before introducing concurrency."
+
+- "The pipeline should follow the actual implementation boundaries:
+  input → media acquisition → speech/visual search → candidate regions →
+  OCR/matching → localization → result → output."
+
+- "Keep orchestration logic in pipeline.py rather than spreading control
+  flow across individual components."
+
+- "Ensure individual components receive structured data rather than
+  reaching into one another's internal implementation."
+
+- "Make failures explicit and propagate meaningful results to the CLI."
+
+- "Do not introduce unnecessary concurrency until the sequential pipeline
+  has been validated with real videos."
+
+
+============================================================
+13. CLI AND USER INPUT
+============================================================
+
+- "Provide a command-line interface where the video source and target
+  dialogue are supplied as positional terminal arguments."
+
+- "Do not use input() inside the processing modules."
+
+- "Support a command structure equivalent to:
+  python -m framefinder <video-source> <dialogue>"
+
+- "Expose practical configuration through CLI options where appropriate,
+  including output directory, matching threshold, ASR model, language,
+  device, OCR sampling interval, stable-frame count, and search mode."
+
+- "Provide a clear --help message describing the available options."
+
+- "Keep the CLI responsible for argument parsing and delegate actual
+  processing to the application pipeline."
+
+
+============================================================
+14. PROJECT STRUCTURE AND PACKAGING
+============================================================
+
+- "Use a clean src-layout package structure with application code under
+  src/framefinder and tests under tests."
+
+- "Configure setuptools package discovery through pyproject.toml."
+
+- "Configure pytest so tests can run directly from the repository root."
+
+- "Keep dependencies in project metadata/requirements rather than relying
+  on packages installed manually without documentation."
+
+- "Keep .venv, build artifacts, caches, temporary files, downloads, and
+  generated output excluded through .gitignore."
+
+- "Ensure the project can be installed and executed from a fresh clone."
+
+
+============================================================
+15. TESTING AND VALIDATION
+============================================================
+
+- "Create unit tests for deterministic components before relying on
+  end-to-end video tests."
+
+- "Test matching, candidate merging, image processing, CLI behavior, and
+  media handling independently."
+
+- "Use synthetic data where possible so unit tests do not require network
+  access or large video files."
+
+- "Run the complete pytest suite before committing each meaningful
+  milestone."
+
+- "Do not weaken or remove tests merely to make a failing implementation
+  pass; investigate the underlying behavior instead."
+
+- "After unit tests pass, perform real end-to-end validation using public
+  video URLs and known target dialogues."
+
+- "Validate both successful searches and cases where the target is absent
+  or ambiguous."
+
+
+============================================================
+16. REAL-WORLD END-TO-END VALIDATION
+============================================================
+
+- "Run the complete application against a real public video URL and a
+  known on-screen dialogue."
+
+- "Verify that media acquisition succeeds, speech/OCR processing runs,
+  the candidate region is reasonable, and the final frame corresponds to
+  the requested dialogue."
+
+- "Test more than one video source to ensure the implementation is not
+  accidentally dependent on a single URL."
+
+- "Verify that the output image is created in the configured output
+  directory and represents the selected frame."
+
+- "Verify that running a new search replaces the previous output rather
+  than leaving stale result images."
+
+- "If a real-world failure occurs, diagnose the failing layer before
+  changing the architecture."
+
+
+============================================================
+17. README AND APPROACH DOCUMENTATION
+============================================================
+
+- "Create a README that describes the actual implementation in this
+  repository rather than an earlier architecture that was discussed but
+  not implemented."
+
+- "Explain the project purpose, major features, supported inputs,
+  technology stack, project structure, installation requirements, and
+  command-line usage."
+
+- "Give an evaluator clear instructions starting from a fresh Git clone:
+  create the virtual environment, activate it, install dependencies,
+  install the project if required, run tests, and execute the application."
+
+- "Include realistic example commands using both a public video URL and
+  the expected dialogue argument."
+
+- "Explain the output directory and what the generated result represents."
+
+- "Include a detailed system architecture explaining media acquisition,
+  speech recognition, candidate generation, OCR, fuzzy matching, frame
+  localization, temporal verification, and result generation."
+
+- "Create APPROACH.md explaining how the problem was analyzed, why the
+  chosen architecture was used, how audio and visual evidence work
+  together, how the first frame is determined, and how uncertainty is
+  handled."
+
+- "Keep the documentation aligned with the actual code and dependencies.
+  Do not document features that are only proposed ideas."
+
+
+============================================================
+18. PROMPTS AND FINAL REPOSITORY REVIEW
+============================================================
+
+- "Organize prompts.txt into logical development sections rather than
+  making every individual prompt a separate section."
+
+- "Keep each prompt concise enough to read naturally while still showing
+  the engineering question, decision, or implementation request."
+
+- "Review the complete repository as if you were the assessment evaluator."
+
+- "Compare the actual implementation with the original requirements and
+  identify missing, misleading, unnecessary, or unsupported claims."
+
+- "Verify that the documented execution path matches the actual CLI."
+
+- "Verify that the README installation and execution instructions work
+  from a fresh repository checkout."
+
+- "Check that source code, tests, dependencies, documentation, Git
+  configuration, and generated-output handling are appropriate for
+  submission."
+
+- "Review the complete execution flow from video source and dialogue
+  through media acquisition, speech/visual search, candidate generation,
+  OCR/matching, frame localization, and final output."
+
+- "Do not add unnecessary features during the final review. Prioritize
+  correctness, reproducibility, clarity, and alignment between the code
+  and documentation."
+
+
+============================================================
+19. FINAL SUBMISSION CHECK
+============================================================
+
+- "Perform one final repository cleanup before submission."
+
+- "Remove unnecessary generated files, temporary files, local virtual
+  environments, caches, downloaded media, and development artifacts."
+
+- "Confirm that .venv/ and generated output are ignored and are not tracked
+  by Git."
+
+- "Confirm that all required source files, tests, documentation,
+  requirements, pyproject.toml, and README files are present."
+
+- "Run the test suite one final time."
+
+- "Run the CLI help command and one representative real-video command."
+
+- "Check git status and git diff --check."
+
+- "Review the final Git history and ensure the repository contains only
+  files relevant to the assessment."
+
+- "Confirm that a fresh evaluator can clone the repository, install the
+  dependencies, run the tests, provide a video URL and target dialogue in
+  the terminal, and obtain the expected result without relying on local
+  files or undocumented setup."
+
+
+============================================================
+END OF PROMPTS
+============================================================
