@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=75", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dialogue-frame-finder"
+version = "0.1.0"
+description = "Locate the first video frame containing a requested on-screen dialogue."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "faster-whisper>=1.2,<2",
+  "imageio-ffmpeg>=0.6,<1",
+  "numpy>=2.0,<3",
+  "opencv-python>=4.10,<5",
+  "rapidfuzz>=3.9,<4",
+  "rapidocr-onnxruntime>=1.4,<2",
+  "yt-dlp[default]>=2025.1.1",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.3,<9"]
+
+[project.scripts]
+find-dialogue-frame = "framefinder.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]

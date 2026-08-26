@@ -1,0 +1,17 @@
+{
+  "status": "found",
+  "target_text": "My mind rebels at stagnation",
+  "source": "https://ok.ru/video/248244667877",
+  "timestamp_seconds": 324.84,
+  "timestamp": "00:05:24.840",
+  "frame_number": 7788,
+  "frame_number_base": 0,
+  "extracted_text": "My mind read bells. It's stagnation.",
+  "recognition_method": "speech",
+  "confidence": 83.486,
+  "fuzzy_score": 87.097,
+  "recognizer_confidence": 0.69581,
+  "fps": 23.97616608930767,
+  "model": "base.en",
+  "language": "en"
+}
